@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Add Feed - λleph</title>
+  </head>
+  <body>
+    <div id="content">
+      <form id="submit-form" action="/add-feed" method="post"
+            onsubmit="submitFeed(); return false;">
+        <fieldset>
+          <table class="add-feed">
+            <tr>
+              <td><label for="name">Name: </label></td>
+              <td><input type="text" name="name"></td>
+            </tr>
+            <tr>
+              <td><label for="source">Source: </label></td>
+              <td><input type="text" name="source"></td>
+            </tr>
+            <tr>
+              <td><label for="fetcher">Source Type: </label></td>
+              <td>
+                <select name="fetcher">
+                  <option value="http">HTTP</option>
+                  <option value="file">File</option>
+                  <option value="command">Command</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td><label for="parser">Feed Type: </label></td>
+              <td>
+                <select name="parser">
+                  <option value="auto">RSS/Atom</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td><label for="scheduleparameter">Update Interval: </label></td>
+              <td><input type="number" name="scheduleparameter" min="1" value="30"></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td><input type="submit" value="Add Feed"></td>
+            </tr>
+          </table>
+        </fieldset>
+      </form>
+    </div>
+    <script src="/aleph.js"></script>
+    <script>
+      function submitFeed() {
+        var form = new FormData(document.getElementById("submit-form"));
+        var feed = Aleph.addFeed(form, function(feed) {
+          window.location = "/client/feed.html?id=" + feed.id;
+        });
+      }
+    </script>
+  </body>
+</html>
