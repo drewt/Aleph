@@ -52,7 +52,7 @@
       function submitFeed() {
         var form = new FormData(document.getElementById("submit-form"));
         var feed = Aleph.addFeed(form, function(feed) {
-          window.location = "/client/feed.html?id=" + feed.id;
+          window.location = "/client/feed?id=" + feed.id;
         });
       }
     </script>
