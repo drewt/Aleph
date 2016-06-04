@@ -20,8 +20,11 @@
 ;; This package includes feed update logic.
 (in-package :controller)
 
-(defun add-feed (name source &key (loc-type "http") (feed-type "auto") (tags '()))
-  ; TODO: schedule update
+(defun add-feed (name source &key (loc-type "http")
+                                  (feed-type "auto")
+                                  (schedule "periodic")
+                                  (schedule-parameter "30")
+                                  (tags '()))
   (scheduler:schedule-feed
     (feed-store:add-feed
       (make-instance 'feed-store:feed
@@ -29,6 +32,8 @@
                      :source source
                      :fetcher loc-type
                      :parser feed-type
+                     :schedule schedule
+                     :schedule-parameter schedule-parameter
                      :tags tags))))
 
 (defun *update-feed (feed)

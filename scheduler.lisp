@@ -44,7 +44,8 @@
       (warn (format nil "Unknown schedule for feed ~a (~a): ~a"
                         (feed-store:feed-id feed)
                         (feed-store:feed-name feed)
-                        (feed-store:feed-schedule feed))))))
+                        (feed-store:feed-schedule feed)))))
+  feed)
 
 ;; Schedule an update for a feed after a number of seconds.
 (defun schedule-update (feed seconds)

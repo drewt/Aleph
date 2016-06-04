@@ -71,15 +71,12 @@
                       source
                       (tags :init-form '()))
   (feed-store:with-connection
-    (let ((feed (make-instance 'feed-store:feed
-                               :name name
-                               :fetcher fetcher
-                               :parser parser
-                               :schedule schedule
-                               :schedule-parameter scheduleparameter
-                               :source source
-                               :tags tags)))
-      (feed-store:add-feed feed)
+    (let ((feed (controller:add-feed name source
+                                     :loc-type fetcher
+                                     :feed-type parser
+                                     :schedule schedule
+                                     :schedule-parameter scheduleparameter
+                                     :tags tags)))
       (redirect (format nil "/feeds/~a" (feed-store:feed-id feed))))))
 
 (defun feed-handler ()
