@@ -425,6 +425,11 @@
                                                           (:= 'feed id)))
                  :where (:= 'id id)))))
 
+(defun count-feed-unread (id)
+  (caar (query (:select (:count :*) :from 'item
+                :where (:and (:= 'read nil)
+                             (:= 'feed id))))))
+
 (defun add-items (items)
   (if items
     (with-transaction ()

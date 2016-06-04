@@ -121,7 +121,8 @@
         (setf (feed-store:feed-updated feed) now)
         (when found-new-items
           (setf (feed-store:feed-new-items feed) now)
-          (feed-store:update-feed-unread (feed-store:feed-id feed))))
+          (setf (feed-store:feed-unread feed)
+                (feed-store:count-feed-unread (feed-store:feed-id feed)))))
       (feed-store:save-feed feed) 
       feed)))
 

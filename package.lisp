@@ -31,6 +31,7 @@
                 :save-dao
                 :update-dao
                 :query-dao
+                :query
                 :execute)
   (:import-from :s-sql :sql :sql-compile)
   (:import-from :simple-date :universal-time-to-timestamp)
@@ -95,7 +96,8 @@
            :get-items
            :get-item
            :query-items
-           :update-feed-unread))
+           :update-feed-unread
+           :count-feed-unread))
 
 ;; Fetchers
 (defpackage :feed-source
