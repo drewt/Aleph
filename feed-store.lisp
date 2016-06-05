@@ -474,7 +474,8 @@
       (setf query (append query `(:where (:and ,@constraints)))))
     (when limit
       (setf query (list :limit query limit)))
-    (query-dao 'item (sql-compile query))))
+    (setf query (list :order-by query (list :desc 'published)))
+    (mapcar #'get-metadata (query-dao 'item (sql-compile query)))))
 
 ;; Mark an item as read and update the unread count on the corresponding feed.
 (defgeneric mark-item-read (item))

@@ -56,11 +56,17 @@
                      ((limit  :init-form 100
                               :parameter-type 'integer)
                       (feed   :parameter-type 'integer)
-                      (unread :parameter-type 'boolean))
+                      (unread :parameter-type 'boolean)
+                      format)
   (feed-store:with-connection
     (setf (content-type*) "application/json; charset=utf-8")
-    (json:encode-json-to-string
-      (feed-store:query-items :limit limit :feed feed :unread unread))))
+    (let ((items (feed-store:query-items :limit limit :feed feed :unread unread)))
+      (json:encode-json-to-string
+        (cond
+          ((string= format "raw")
+            items)
+          (t
+            (mapcar #'curator:curate items)))))))
 
 (define-easy-handler (add-feed :uri "/add-feed")
                      ((name :init-form "Untitled")
@@ -175,6 +181,14 @@
           (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
           nil)))))
 
+; Handler to server <path>/index.html when <path>/ is requested.
+(defun index-handler ()
+  (handle-static-file
+    ; FIXME: join pathnames portably
+    (format nil "~a~aindex.html"
+                *document-root*
+                (puri:uri-path (puri:parse-uri (request-uri*))))))
+
 ; Handler to serve <page>.html when <page> is requested.
 (defun no-extension-handler ()
   (handle-static-file
@@ -191,4 +205,5 @@
             (create-regex-dispatcher "^/items/\\d+/mark-read/?$" #'item-mark-read-handler)
             (create-regex-dispatcher "^/items/\\d+/?$"           #'item-handler)
             'hunchentoot:dispatch-easy-handlers
+            (create-regex-dispatcher "/$"                        #'index-handler)
             (create-regex-dispatcher "/[^\\./]*$"                #'no-extension-handler)))
