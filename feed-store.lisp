@@ -21,10 +21,6 @@
 ;; items, and metadata) and provides an interface to the database.
 (in-package :feed-store)
 
-;(defparameter *db-name* "aggregator")
-;(defparameter *db-user* "drew")
-;(defparameter *db-pass* "aggregator")
-;(defparameter *db-host* "localhost")
 (defparameter *db-name* (config:get-value '(:database :name)))
 (defparameter *db-user* (config:get-value '(:database :user)))
 (defparameter *db-pass* (config:get-value '(:database :pass)))

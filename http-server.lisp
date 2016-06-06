@@ -20,8 +20,6 @@
 ;; This package defines the HTTP API for interacting with the aggregator.
 (in-package :http-server)
 
-;(defparameter *port* 8080)
-;(defparameter *document-root* "www/")
 (defparameter *port* (config:get-value '(:server :port)))
 (defparameter *document-root* (config:get-value '(:server :document-root)))
 
@@ -54,6 +52,13 @@
 (defun not-found ()
   (setf (return-code*) +HTTP-NOT-FOUND+)
   nil)
+
+(defmacro method-case (&body cases)
+  `(case (request-method*)
+     ,@cases
+     (otherwise
+       (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
+       nil)))
 
 (define-easy-handler (feeds :uri "/feeds") ()
   (feed-store:with-connection
@@ -97,15 +102,12 @@
           (feed (feed-store:get-feed id))
           (fmt (get-parameter "format")))
       (if feed
-        (case (request-method*)
+        (method-case
           ((:GET)
             (make-response (cond ((string= fmt "raw") feed)
                                  (t (curator:curate feed)))))
           ((:DELETE)
             (feed-store:rm-feed (feed-store:feed-id feed))
-            nil)
-          (otherwise
-            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
             nil))
         (not-found)))))
 
@@ -116,15 +118,12 @@
            (fmt (get-parameter "format")))
       (if (feed-store:get-feed id)
         (let ((items (feed-store:get-items id)))
-          (case (request-method*)
+          (method-case
             ((:GET)
               (make-response (cond ((string= fmt "raw"))
                                    (t (mapcar #'curator:curate items)))))
             ((:DELETE)
               ;TODO
-              nil)
-            (otherwise
-              (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
               nil)))
         (not-found)))))
 
@@ -133,12 +132,9 @@
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
       (if (feed-store:get-feed id)
-        (case (request-method*)
+        (method-case
           ((:POST)
             (controller:update-feed id)
-            nil)
-          (otherwise
-            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
             nil))
         (not-found)))))
 
@@ -147,12 +143,9 @@
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
       (if (feed-store:get-feed id)
-        (case (request-method*)
+        (method-case
           ((:POST)
             (feed-store:mark-feed-read id)
-            nil)
-          (otherwise
-            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
             nil))
         (not-found)))))
 
@@ -161,12 +154,9 @@
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
       (if (feed-store:get-item id)
-        (case (request-method*)
+        (method-case
           ((:POST)
             (feed-store:mark-item-read id)
-            nil)
-          (otherwise
-            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
             nil))
         (not-found)))))
 
@@ -176,13 +166,10 @@
                               :junk-allowed t))
            (item (feed-store:get-item id)))
       (if item
-        (case (request-method*)
+        (method-case
           ((:GET)
             (setf (content-type*) "application/json; charset=utf-8")
-            (json:encode-json-to-string item))
-          (otherwise
-            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
-            nil))
+            (json:encode-json-to-string item)))
         (not-found)))))
 
 ; Handler to server <path>/index.html when <path>/ is requested.
