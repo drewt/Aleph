@@ -47,10 +47,17 @@
       (setf server-started nil))
     (warn "Server is not started")))
 
+(defun make-response (obj)
+  (setf (content-type*) "application/json; charset=utf-8")
+  (json:encode-json-to-string obj))
+
+(defun not-found ()
+  (setf (return-code*) +HTTP-NOT-FOUND+)
+  nil)
+
 (define-easy-handler (feeds :uri "/feeds") ()
   (feed-store:with-connection
-    (setf (content-type*) "application/json; charset=utf-8")
-    (json:encode-json-to-string (feed-store:get-feeds))))
+    (make-response (feed-store:get-feeds))))
 
 (define-easy-handler (items :uri "/items")
                      ((limit  :init-form 100
@@ -59,14 +66,9 @@
                       (unread :parameter-type 'boolean)
                       format)
   (feed-store:with-connection
-    (setf (content-type*) "application/json; charset=utf-8")
     (let ((items (feed-store:query-items :limit limit :feed feed :unread unread)))
-      (json:encode-json-to-string
-        (cond
-          ((string= format "raw")
-            items)
-          (t
-            (mapcar #'curator:curate items)))))))
+      (make-response (cond ((string= format "raw") items)
+                           (t (mapcar #'curator:curate items)))))))
 
 (define-easy-handler (add-feed :uri "/add-feed")
                      ((name :init-form "Untitled")
@@ -83,7 +85,10 @@
                                      :schedule schedule
                                      :schedule-parameter scheduleparameter
                                      :tags tags)))
+      ; TODO: update synchronously
       (redirect (format nil "/feeds/~a" (feed-store:feed-id feed))))))
+
+;; TODO: refactor to consolidate code for extracting and validating ID from URL
 
 (defun feed-handler ()
   (feed-store:with-connection
@@ -91,95 +96,94 @@
                               :junk-allowed t))
           (feed (feed-store:get-feed id))
           (fmt (get-parameter "format")))
-      ; TODO: 404 for unused id
-      (case (request-method*)
-        ((:GET)
-          (setf (content-type*) "application/json; charset=utf-8")
-          (json:encode-json-to-string
-            (cond
-              ((string= fmt "raw")
-                feed)
-              (t
-                (curator:curate feed)))))
-        ((:DELETE)
-          (feed-store:rm-feed (feed-store:feed-id feed))
-          nil)
-        (otherwise
-          (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
-          nil)))))
+      (if feed
+        (case (request-method*)
+          ((:GET)
+            (make-response (cond ((string= fmt "raw") feed)
+                                 (t (curator:curate feed)))))
+          ((:DELETE)
+            (feed-store:rm-feed (feed-store:feed-id feed))
+            nil)
+          (otherwise
+            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
+            nil))
+        (not-found)))))
 
 (defun feed-items-handler ()
   (feed-store:with-connection
     (let* ((id (parse-integer (subseq (request-uri*) 7)
                               :junk-allowed t))
-           (items (feed-store:get-items id))
            (fmt (get-parameter "format")))
-      ; TODO: 404 for unused id
-      (case (request-method*)
-        ((:GET)
-          (setf (content-type*) "application/json; charset=utf-8")
-          (json:encode-json-to-string
-            (cond
-              ((string= fmt "raw")
-                items)
-              (t
-                (mapcar #'curator:curate items)))))
-        ((:DELETE)
-          ;TODO
-          nil)
-        (otherwise
-          (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
-          nil)))))
+      (if (feed-store:get-feed id)
+        (let ((items (feed-store:get-items id)))
+          (case (request-method*)
+            ((:GET)
+              (make-response (cond ((string= fmt "raw"))
+                                   (t (mapcar #'curator:curate items)))))
+            ((:DELETE)
+              ;TODO
+              nil)
+            (otherwise
+              (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
+              nil)))
+        (not-found)))))
 
 (defun feed-update-handler ()
   (feed-store:with-connection
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
-      (case (request-method*)
-        ((:POST)
-          (controller:update-feed id)
-          nil)
-        (otherwise
-          (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
-          nil)))))
+      (if (feed-store:get-feed id)
+        (case (request-method*)
+          ((:POST)
+            (controller:update-feed id)
+            nil)
+          (otherwise
+            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
+            nil))
+        (not-found)))))
 
 (defun feed-mark-read-handler ()
   (feed-store:with-connection
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
-      (case (request-method*)
-        ((:POST)
-          (feed-store:mark-feed-read id)
-          nil)
-        (otherwise
-          (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
-          nil)))))
+      (if (feed-store:get-feed id)
+        (case (request-method*)
+          ((:POST)
+            (feed-store:mark-feed-read id)
+            nil)
+          (otherwise
+            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
+            nil))
+        (not-found)))))
 
 (defun item-mark-read-handler ()
   (feed-store:with-connection
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
-      (case (request-method*)
-        ((:POST)
-          (feed-store:mark-item-read id)
-          nil)
-        (otherwise
-          (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
-          nil)))))
+      (if (feed-store:get-item id)
+        (case (request-method*)
+          ((:POST)
+            (feed-store:mark-item-read id)
+            nil)
+          (otherwise
+            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
+            nil))
+        (not-found)))))
 
 (defun item-handler ()
   (feed-store:with-connection
     (let* ((id (parse-integer (subseq (request-uri*) 7)
                               :junk-allowed t))
            (item (feed-store:get-item id)))
-      ; TODO: 404 for unused id
-      (case (request-method*)
-        ((:GET)
-          (setf (content-type*) "application/json; charset=utf-8")
-          (json:encode-json-to-string item))
-        (otherwise
-          (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
-          nil)))))
+      (if item
+        (case (request-method*)
+          ((:GET)
+            (setf (content-type*) "application/json; charset=utf-8")
+            (json:encode-json-to-string item))
+          (otherwise
+            (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
+            nil))
+        (not-found)))))
 
 ; Handler to server <path>/index.html when <path>/ is requested.
 (defun index-handler ()
