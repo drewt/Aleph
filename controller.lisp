@@ -25,6 +25,7 @@
                                   (schedule "periodic")
                                   (schedule-parameter "30")
                                   (tags '()))
+  "Add a feed to the database."
   (scheduler:schedule-feed
     (feed-store:add-feed
       (make-instance 'feed-store:feed
@@ -37,6 +38,7 @@
                      :tags tags))))
 
 (defun *update-feed (feed)
+  "Fetch and parse a feed."
   (feed-parser:parse (feed-store:feed-parser feed)
                      (feed-source:fetch (feed-store:feed-fetcher feed)
                                         (feed-store:feed-source feed))))
@@ -46,6 +48,7 @@
 ;; atom:id tags; otherwise we use the link, title or description tag.  The
 ;; Feed ID is always prepended to the guid to further prevent collisions.
 (defun get-guid (feed item-metadata)
+  "Compute a GUID from an item's metadata."
   (format nil "~a-~a"
     (feed-store:object-id feed)
     (fourth
@@ -62,8 +65,8 @@
                             item-metadata))
           '("fake-guid" nil nil (format nil "~a" (get-universal-time))))))))
 
-;; Save a list of metadata trees to the database.
 (defun save-metadata (metadata object)
+  "Save METADATA as metadata for OBJECT."
   (labels ((do-save-metadata (datum parent-id)
              (let ((datum-obj (make-instance 'feed-store:metadata
                                              :object-id (feed-store:object-id object)
@@ -92,11 +95,13 @@
       (do-save-metadata datum -1))))
 
 (defun update-item (item item-metadata)
+  "Update an item that is already saved in the database if it has changed."
   ; TODO: compare 'updated' date and replace metadata if newer
   (declare (ignore item-metadata))
   item)
 
 (defun get-published (item)
+  "Compute the value of the 'published' field for an item."
   (let ((published (assoc "published" item :test #'string=)))
     (simple-date:universal-time-to-timestamp
       (if published
@@ -106,6 +111,7 @@
 (defgeneric update-feed (feed))
 
 (defmethod update-feed ((feed feed-store:feed))
+  "Update FEED, storing new items in the database."
   (let ((found-new-items nil)) ; FIXME: yuck
     (multiple-value-bind (feed-data items) (*update-feed feed)
       (save-metadata feed-data feed)
@@ -132,6 +138,7 @@
       feed)))
 
 (defmethod update-feed ((id integer))
+  "Update the feed identified by ID, storing new items in the database."
   (let ((feed (feed-store:get-feed id)))
     (if feed
       (update-feed feed)
@@ -139,10 +146,12 @@
       nil)))
 
 (defun update-all ()
+  "Update all feeds."
   (dolist (feed (feed-store:get-feeds))
     (update-feed feed)))
 
 (defun schedule-all (minutes)
+  "Schedule updates for all feeds."
   (dolist (feed (feed-store:get-feeds))
     (sb-ext:schedule-timer
       (sb-ext:make-timer (lambda ()

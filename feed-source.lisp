@@ -23,10 +23,12 @@
 
 ;; Fetcher for HTTP resources.
 (defun fetch-http (source)
+  "Return a stream for the HTTP resource identified by the URI SOURCE."
   (drakma:http-request source :want-stream t))
 
 ;; Fetcher for local files.
 (defun fetch-file (source)
+  "Return a stream for the file identified by the path SOURCE."
   (open source))
 
 ;; This fetcher will run source as a shell command and return the output
@@ -34,6 +36,7 @@
 ;; TODO: option to prevent command feeds from being added remotely.
 ;; TODO: option to disable command feeds altogether
 (defun fetch-command (source)
+  "Return a stream for the output of the shell command SOURCE."
   (sb-ext:run-program "sh" (list "-c" source) :output :stream :wait nil))
 
 (defparameter *fetchers*
@@ -42,15 +45,18 @@
         (cons "command" #'fetch-command)))
 
 (defun get-fetcher (name)
+  "Return the fetcher with the name NAME."
   (let ((fetcher (assoc name *fetchers* :test #'string=)))
     (if fetcher
       (cdr fetcher)
       nil)))
 
 (defun register-fetcher (name fetcher)
+  "Register FETCHER as a fetcher with the name NAME."
   (acons name fetcher *fetchers*))
 
 (defun fetch (fetcher-name source)
+  "Return a stream for SOURCE using the fetcher named by FETCHER-NAME."
   (let ((fetcher (get-fetcher fetcher-name)))
     (if fetcher
       (funcall fetcher source)

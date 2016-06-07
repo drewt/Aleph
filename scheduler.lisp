@@ -28,14 +28,16 @@
 (defparameter *schedules* nil)
 
 (defun get-schedule (name)
+  "Retrieve the scheduler with the name NAME."
   (assoc name *schedules* :test #'string=))
 
 (defun register-schedule (name schedule validate)
+  "Register a new scheduler with the name NAME."
   (push (list name schedule validate) *schedules*))
 
-;; Schedule an update for a feed.  The length of time to wait before updating
-;; is determined by the scheduling policy of the feed object.
 (defun schedule-feed (feed)
+  "Schedule an update for the feed FEED.  The feed's scheduler is invoked to
+   determine when the update should occur."
   (let ((schedule (get-schedule (feed-store:feed-schedule feed))))
     (if schedule
       (schedule-update feed (funcall (second schedule)
@@ -47,8 +49,8 @@
                         (feed-store:feed-schedule feed)))))
   feed)
 
-;; Schedule an update for a feed after a number of seconds.
 (defun schedule-update (feed seconds)
+  "Schedule an update for FEED after SECONDS seconds."
   (let* ((id (feed-store:feed-id feed))
          (timer (sb-ext:make-timer (lambda ()
                                      (feed-store:with-connection
@@ -64,21 +66,26 @@
     (sb-ext:schedule-timer timer seconds)))
 
 (defun schedule-all ()
+  "Schedule updates for all feeds."
   (dolist (feed (feed-store:get-feeds))
     (unless (gethash (feed-store:feed-id feed) *scheduled-updates*)
       (schedule-feed feed))))
 
 (defun elapsed-since-update (feed)
+  "Compute the number of seconds elapsed since FEED was last updated."
   (max 0 (- (get-universal-time)
             (simple-date:timestamp-to-universal-time
               (feed-store:feed-updated feed)))))
 
 (defun elapsed-since-new-items (feed)
+  "Compute the number of seconds elapsed since new items were found for FEED."
   (max 0 (- (get-universal-time)
             (simple-date:timestamp-to-universal-time
               (feed-store:feed-new-items feed)))))
 
 (defun seconds-after-last-update (feed seconds)
+  "Compute the number of seconds until SECONDS seconds will have elapsed since
+   FEED was last updated."
   (max 0 (- seconds (elapsed-since-update feed))))
 
 ;;
@@ -86,16 +93,18 @@
 ;;
 
 (defun positive-integer-p (string)
+  "Return T if STRING contains only positive integers."
   (loop for char across string
         always (digit-char-p char)))
 
-;; Parse part of a time string (e.g. "3d") into a number and a unit (e.g.
-;; '("3" "d"))
 (defun *parse-time-part (part)
+  "Parse PART, which should be a part of a time string (e.g. \"3d\") into a
+   number and a unit (e.g. '(\"3\" \"d\"))."
   (list (subseq part 0 (1- (length part)))
         (subseq part (1- (length part)))))
 
 (defun time-valid-p (string)
+  "Return T if STRING is a valid time string (e.g. \"3d,4h,15m\")."
   (labels ((unit-valid-p (unit)
              (member (char unit 0) '(#\s #\m #\h #\d)))
            (time-part-valid-p (part)
@@ -107,6 +116,7 @@
           always (time-part-valid-p val))))
 
 (defun minutes-or-time-p (string)
+  "Return T if STRING is either a time string, or a positive integer."
   (or (positive-integer-p string)
       (time-valid-p string)))
 
@@ -118,12 +128,15 @@
   (split-sequence #\; string))
 
 (defun parse-time-part (part)
+  "Parse PART, which should be a part of a time string (e.g. \"3d\") into a
+   number and a unit (e.g. '(3 #\d))."
   (destructuring-bind (n unit) (*parse-time-part part)
     (list (parse-integer n)
           (char unit 0))))
 
-;; Parse a string representing a interval of time, such as "3d", "3d,4h", etc.
 (defun parse-time (string)
+  "Parse a time string (e.g. \"3d,4h,15m\"), returning the time as a number
+   of seconds."
   (loop for val in (split-sequence #\, string)
         with time = 0
         finally (return time)
@@ -138,6 +151,8 @@
           (warn (format nil "Unknown unit int time string: ~a" (string unit))))))))
 
 (defun parse-minutes-or-time (param)
+  "Parse PARAM, which should be either a time string or a positive integer,
+   returning a number of seconds."
   (if (positive-integer-p param)
     (* 60 (parse-integer param))
     (parse-time param)))
@@ -146,12 +161,15 @@
 ;; Scheduling policies
 ;;
 
-;; Schedule an update after a fixed number of minutes.  The parameter must
-;; contain a string suitable for passing to parse-integer.
 (defun schedule-periodic (feed param)
+  "Schedule an update after a fixed number of minutes."
   (seconds-after-last-update feed (parse-minutes-or-time param)))
 
 (defun schedule-threshold (feed param)
+  "Schedule an update for one of two fixed numbers of minutes.  If less than
+   THRESHOLD minutes have passed since the feed received new items, then the
+   update is scheduled for BEFORE minutes; otherwise it is scheduled for
+   AFTER minutes."
   (destructuring-bind (threshold before after) (parse-params param)
     (let ((elapsed (elapsed-since-new-items feed)))
       (if (>= elapsed (parse-minutes-or-time threshold))
@@ -159,6 +177,8 @@
         (seconds-after-last-update feed (parse-minutes-or-time before))))))
 
 (defun threshold-param-valid-p (param)
+  "Return T if PARAM is a list of three values, separated by semicolons, and
+   each value is either a time string or a positive integer."
   (let ((params (parse-params param)))
     (if (= (length params) 3)
       (destructuring-bind (threshold before after) params

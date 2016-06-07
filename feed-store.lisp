@@ -35,12 +35,14 @@
   (postmodern:connect-toplevel *db-name* *db-user* *db-pass* *db-host*))
 
 (defun delete-db ()
+  "Delete all of Aleph's tables from the database."
   (execute "DROP TABLE feed")
   (execute "DROP TABLE item")
   (execute "DROP TABLE metadata")
   (execute "DROP TABLE aleph"))
 
 (defun create-db ()
+  "Initialize the database."
   (execute (postmodern:dao-table-definition 'feed))
   (execute (postmodern:dao-table-definition 'item))
   (execute (postmodern:dao-table-definition 'metadata))
@@ -54,15 +56,18 @@
                'created (universal-time-to-timestamp (get-universal-time))))))
 
 (defun reset-db ()
+  "Delete and then reinitialize the databse."
   (delete-db)
   (create-db))
 
 (defun db-created-p ()
+  "Return T if the database has been initialized."
   (> (execute
        (sql (:select 'relname :from 'pg_class :where (:= 'relname "aleph"))))
      0))
 
 (defun initialize ()
+  "Initialize the database, if it has not been already."
   (unless (db-created-p)
     (create-db)))
 
@@ -140,10 +145,10 @@
      :initform '()
      :accessor feed-metadata))
   (:metaclass postmodern:dao-class)
-  (:keys id))
+  (:keys id)
+  (:documentation "Represents a feed in the database.")
+  )
 
-;; A feed item.  Note that Item objects do not directly contain any content;
-;; rather, the items contents are stored as metadata.
 (defclass item ()
   ((id
      :accessor item-id
@@ -190,7 +195,10 @@
      :initform '()
      :accessor item-metadata))
   (:metaclass postmodern:dao-class)
-  (:keys id))
+  (:keys id)
+  (:documentation "Represents an 'item' (in RSS parlance) or 'entry' (in Atom
+                   parlance) in the database.  Associated with a particular
+                   feed object."))
 
 ;; Object type constants.  Used to identify which kind of object a tag/metadata
 ;; refers to.
@@ -218,15 +226,13 @@
      :initform (error "Must supply a name for tag.")
      :accessor item-tag-name
      :col-type string))
-  (:metaclass postmodern:dao-class))
+  (:metaclass postmodern:dao-class)
+  (:documentation "A string, associated with a feed or item object."))
 
 ;; Metadata type constants.
 (defconstant +metadata-element+ 0)
 (defconstant +metadata-attribute+ 1)
 
-;; Arbitrary key-value pairs may be associated with a feed or item.  Metadata
-;; may also be organized into a tree structure with the parent slot.  Circular
-;; data is NOT supported.
 (defclass metadata ()
   ((id
      :accessor metadata-id
@@ -272,7 +278,9 @@
      :accessor metadata-parent
      :col-type integer))
   (:metaclass postmodern:dao-class)
-  (:keys id))
+  (:keys id)
+  (:documentation "A key-value pair, associated with a particular feed or item
+                   object, potentially forming a tree structure."))
 
 ;; Intermediate representation for metadata.  An element object roughly
 ;; corresponds to an XML element.  The main difference is that there is a
@@ -281,29 +289,39 @@
   ((name :initarg :name :accessor element-name)
    (text :initarg :text :accessor element-text)
    (attributes :initarg :attributes :initform nil :accessor element-attributes)
-   (children :initarg :children :initform nil :accessor element-children)))
+   (children :initarg :children :initform nil :accessor element-children))
+  (:documentation "Intermediate representation for metadata.  An element object
+                   roughly corresponds to an XML element. The main difference
+                   is that an element object has a single text node, with no
+                   ordering relative to other child nodes."))
 
 ;; Intermediate representation for metadata.  An attribute object is a simple
 ;; key-value pair, analogous to an XML attribute.
 (defclass attribute ()
   ((name :initarg :name :accessor attribute-name)
-   (value :initarg :value :accessor attribute-value)))
+   (value :initarg :value :accessor attribute-value))
+  (:documentation "Intermediate representation for metadata.  An attribute
+                   object is a simple key-value pair, analogous to an XML
+                   attribute."))
 
 ;; Object-abnostic accessors.  Useful for writing functions which operate
 ;; on metadata, since these functions generally don't care what kind of
 ;; object the metadata references.
 
-(defgeneric object-id (object))
+(defgeneric object-id (object)
+  (:documentation "Get the ID for a database object."))
 (defmethod object-id ((object feed)) (feed-id object))
 (defmethod object-id ((object item)) (item-id object))
 (defmethod object-id ((object metadata)) (metadata-id object))
 
-(defgeneric object-type (object))
+(defgeneric object-type (object)
+  (:documentation "Get the type of a database object."))
 (defmethod object-type ((object feed)) +feed+)
 (defmethod object-type ((object item)) +item+)
 (defmethod object-type ((object metadata)) +metadata+)
 
-(defgeneric object-metadata (object))
+(defgeneric object-metadata (object)
+  (:documentation "Accessor for the metadata slot of a feed or item object."))
 (defmethod object-metadata ((object feed)) (feed-metadata object))
 (defmethod object-metadata ((object item)) (item-metadata object))
 (defgeneric (setf object-metadata) (data object))
@@ -311,17 +329,21 @@
 (defmethod (setf object-metadata) (data (object item)) (setf (item-metadata object) data))
 
 (defun metadata->element (datum)
+  "Create an element object from the metadatum DATUM."
   (make-instance 'element
                  :name (metadata-key datum)
                  :text (metadata-value datum)))
 
 (defun metadata->attribute (datum)
+  "Create an attribute object from the metadatum DATUM."
   (make-instance 'attribute
                  :name (metadata-key datum)
                  :value (metadata-value datum)))
 
 ;; Converts a list of metadata objects to a list of element hierarchies.
 (defun structure-metadata (data)
+  "Construct a hierarchy of element/attribute objects from a list of metadata
+   objects."
   (let ((elements (make-hash-table)))
     ; store elements in hash table by id
     (loop for datum in data
@@ -353,6 +375,8 @@
           collect (gethash (metadata-id datum) elements))))
 
 (defun get-metadata (object)
+  "Fill the metadata slot on OBJECT with the object's metadata, structured
+   as a hierarchy of element/attribute objects."
   (setf (object-metadata object)
         (structure-metadata
           (select-dao 'metadata (:and (:= 'object-type (object-type object))
@@ -360,23 +384,31 @@
   object)
 
 (defun add-feed (feed)
+  "Insert the feed object FEED into the database."
   (insert-dao feed))
 
 (defun save-feed (feed)
+  "Save any changes to the feed object FEED to the database."
   (save-dao feed))
 
 (defun save-metadata (datum)
+  "Insert the metadatum DATUM into the database."
   (insert-dao datum))
 
 (defun delete-metadata (object)
+  "Delete all metadata for OBJECT from the database."
   (execute
     (sql (:delete-from 'metadata
           :where (:and (:= 'object-id (object-id object))
                        (:= 'object-type (object-type object)))))))
 
-(defgeneric rm-feed (feed))
+(defgeneric rm-feed (feed)
+  (:documentation "Remove a feed from the database, including all items and
+                   metadata"))
 
 (defmethod rm-feed ((id integer))
+  "Delete the feed identified by ID from the database, including all of its
+   items and metadata."
   ; delete item metadata
   (dolist (item (select-dao 'item (:= 'feed id)))
     (execute (sql (:delete-from 'metadata
@@ -391,77 +423,92 @@
   (execute (sql (:delete-from 'feed :where (:= 'id id)))))
 
 (defmethod rm-feed ((feed feed))
+  "Delete the feed FEED from the database, including all of its items and
+   metadata."
   (rm-feed (feed-id feed)))
 
 (defun get-feeds ()
+  "Get a list of all the feeds in the database (without metadata)."
   (select-dao 'feed t 'name))
 
-;; Get a feed object, but don't fill out its metadata slots.
 (defun *get-feed (id)
+  "Get the feed identified by ID from the database (without metadata)."
   (let ((feed (select-dao 'feed (:= 'id id))))
     (if feed
       (first feed)
       nil)))
 
-;; Get a feed object and fill out its metadata slots.
-(defgeneric get-feed (feed))
+(defgeneric get-feed (feed)
+  (:documentation "Get a feed from the database."))
 
 (defmethod get-feed ((id integer))
+  "Get the feed identified by ID from the database (with metadata)."
   (let ((feed (*get-feed id)))
     (if feed
       (get-metadata feed)
       nil)))
 
 (defmethod get-feed ((feed feed))
+  "Get a fresh copy of the feed FEED from the database."
   (get-feed (feed-id feed)))
 
 (defun update-feed-unread (id)
+  "Update the unread slot for the feed identified by ID."
   (execute (sql (:update 'feed :set 'unread (:select (:count :*) :from 'item
                                              :where (:and (:= 'read nil)
                                                           (:= 'feed id)))
                  :where (:= 'id id)))))
 
 (defun count-feed-unread (id)
+  "Count the number of unread items for the feed identified by ID."
   (caar (query (:select (:count :*) :from 'item
                 :where (:and (:= 'read nil)
                              (:= 'feed id))))))
 
 (defun add-items (items)
+  "Insert the items ITEMS into the database."
   (if items
     (with-transaction ()
       (loop for item in items do (insert-dao item))
       (update-feed-unread (item-feed (first items))))))
 
 (defun add-item (item)
+  "Insert the item ITEM into the database."
   (insert-dao item))
 
-; TODO: options (e.g. unread, added-since, etc.)
-(defgeneric get-items (feed))
+(defgeneric get-items (feed)
+  (:documentation "Get a list of all items for a feed."))
 
 (defmethod get-items ((id integer))
+  "Get the items for the feed identified by ID (with metadata)."
   (mapcar #'get-metadata (select-dao 'item (:= 'feed id) (:desc 'published))))
 
 (defmethod get-items ((feed feed))
+  "Get the items for the feed FEED (with metadata)."
   (get-items (feed-id feed)))
 
-;; Retrieve an item record from the database.
-(defgeneric get-item (id))
+(defgeneric get-item (id)
+  (:documentation "Get an item from the database."))
 
 (defmethod get-item ((id integer))
+  "Get the item identified by ID (without metadata)."
   (let ((item (select-dao 'item (:= 'id id))))
     (if item
       (first item)
       nil)))
 
 (defmethod get-item ((guid string))
+  "Get the item identified by GUID (without metadata)."
   (let ((item (select-dao 'item (:= 'guid guid))))
     (cond
       ((not item) nil)
       ((> 1 (length item)) nil) ; TODO: guid not unique error
       (t (first item)))))
 
-;;
 (defun query-items (&key (limit nil) (unread nil) (feed nil))
+  "Query the items table.  If LIMIT is given, then at most LIMIT items will be
+   returned.  If UNREAD is T, then only unread items will be returned.  If FEED
+   is given, then only items identified by the ID FEED will be returned."
   (let ((query (list :select :* :from 'item))
         (constraints
           (append (if unread '((:= read nil))   '())
@@ -473,13 +520,15 @@
     (setf query (list :order-by query (list :desc 'published)))
     (mapcar #'get-metadata (query-dao 'item (sql-compile query)))))
 
-;; Mark an item as read and update the unread count on the corresponding feed.
-(defgeneric mark-item-read (item))
+(defgeneric mark-item-read (item)
+  (:documentation "Mark an items as read."))
 
 (defmethod mark-item-read ((item item))
+  "Mark the item ITEM as read."
   (mark-item-read (item-id item)))
 
 (defmethod mark-item-read ((id integer))
+  "Mark the item identified by ID as read."
   (with-transaction ()
     (let ((item (get-item id)))
       (if item
@@ -489,13 +538,16 @@
           (update-feed-unread (item-feed item)))
         (warn (format nil "Tried to mark non-existent item as read: ~a" id))))))
 
-(defgeneric mark-feed-read (feed))
+(defgeneric mark-feed-read (feed)
+  (:documentation "Mark all items for a feed as read."))
 
 (defmethod mark-feed-read ((id integer))
+  "Mark all items for the feed identified by ID as read."
   (with-transaction ()
     (execute (sql (:update 'item :set 'read t :where (:= 'feed id))))
     (execute (sql (:update 'feed :set 'unread 0 :where (:= 'id id))))))
 
 (defmethod mark-feed-read ((feed feed))
+  "Mark all items for the feed FEED as read."
   (mark-feed-read (feed-id feed)))
 

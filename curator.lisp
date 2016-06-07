@@ -25,6 +25,7 @@
   (list (cons name (feed-store:element-text element))))
 
 (defun strip-html (element name)
+  "Remove HTML tags from an element's text."
   `((,name . ,(string-trim '(#\space #\tab #\newline)
                            (sanitize:clean (feed-store:element-text element)
                                            sanitize:+restricted+)))))
@@ -34,25 +35,29 @@
   (keep-text element name))
 
 (defun parse-time (element name)
+  "Compute a UNIX timestamp from an element storing a universal time."
   `((,name . ,(max 0
                    (- (parse-integer (feed-store:element-text element)
                                      :junk-allowed t)
                       2208988800)))))
 
 (defun curate-datum (datum handlers)
+  "Compute an association list of metadata from the element DATUM, using
+   curator spec HANDLERS."
   (let ((handler (assoc (feed-store:element-name datum) handlers :test #'string=)))
     (if handler
       (apply (third handler) datum (nthcdr 3 handler))
       nil)))
 
 (defun handler-default (handler data curated-data)
+  "Compute the default value for the datum specified by HANDLER."
   (if (functionp (second handler))
     (funcall (second handler) data curated-data)
     (second handler)))
 
-;; Curate an object's metadata by applying the given handlers to the root
-;; metadata elements.
 (defun curate-metadata (object handlers)
+  "Curate OBJECT's metadata by applying the curator spec HANDLERS to its root
+   metadata elements."
   (let ((data (loop for datum in (feed-store:object-metadata object)
                     when (curate-datum datum handlers) append it)))
     ; add defaults
@@ -70,6 +75,7 @@
 (defgeneric curate (object))
 
 (defmethod curate ((feed feed-store:feed))
+  "Curate metadata for FEED."
   (append
     `(("id"      . ,(feed-store:feed-id feed))
       ("name"    . ,(feed-store:feed-name feed))
@@ -89,6 +95,7 @@
         ))))
 
 (defmethod curate ((item feed-store:item))
+  "Curate metadata for ITEM."
   (labels ((default-content (data curated-data)
              (declare (ignore curated-data))
              (let ((desc (find-if (lambda (x)

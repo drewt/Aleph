@@ -32,6 +32,7 @@
 (defvar server-started nil)
 
 (defun start ()
+  "Start the Aleph HTTP server."
   (if server-started
     (warn "Server already running")
     (progn
@@ -39,6 +40,7 @@
       (setf server-started t))))
 
 (defun stop ()
+  "Stop the Aleph HTTP server."
   (if server-started
     (progn
       (hunchentoot:stop server)
@@ -46,10 +48,12 @@
     (warn "Server is not started")))
 
 (defun make-response (obj)
+  "Respond to a request by sending OBJ to the client, encoded as JSON."
   (setf (content-type*) "application/json; charset=utf-8")
   (json:encode-json-to-string obj))
 
 (defun not-found ()
+  "Respond with HTTP code 404."
   (setf (return-code*) +HTTP-NOT-FOUND+)
   nil)
 
@@ -96,6 +100,7 @@
 ;; TODO: refactor to consolidate code for extracting and validating ID from URL
 
 (defun feed-handler ()
+  "Serve the feed at /feeds/<id>."
   (feed-store:with-connection
     (let* ((id (parse-integer (subseq (request-uri*) 7)
                               :junk-allowed t))
@@ -112,6 +117,7 @@
         (not-found)))))
 
 (defun feed-items-handler ()
+  "Serve items for the feed at /feeds/<id>."
   (feed-store:with-connection
     (let* ((id (parse-integer (subseq (request-uri*) 7)
                               :junk-allowed t))
@@ -128,6 +134,7 @@
         (not-found)))))
 
 (defun feed-update-handler ()
+  "Update the feed at /feeds/<id>"
   (feed-store:with-connection
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
@@ -139,6 +146,7 @@
         (not-found)))))
 
 (defun feed-mark-read-handler ()
+  "Mark all items read for the feed at /feeds/<id>."
   (feed-store:with-connection
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
@@ -150,6 +158,7 @@
         (not-found)))))
 
 (defun item-mark-read-handler ()
+  "Mark the item read at /items/<id>."
   (feed-store:with-connection
     (let ((id (parse-integer (subseq (request-uri*) 7)
                              :junk-allowed t)))
@@ -161,6 +170,7 @@
         (not-found)))))
 
 (defun item-handler ()
+  "Serve the item at /items/<id>."
   (feed-store:with-connection
     (let* ((id (parse-integer (subseq (request-uri*) 7)
                               :junk-allowed t))
@@ -172,16 +182,16 @@
             (json:encode-json-to-string item)))
         (not-found)))))
 
-; Handler to server <path>/index.html when <path>/ is requested.
 (defun index-handler ()
+  "Serve <path>/index.html when <path>/ is requested."
   (handle-static-file
     ; FIXME: join pathnames portably
     (format nil "~a~aindex.html"
                 *document-root*
                 (puri:uri-path (puri:parse-uri (request-uri*))))))
 
-; Handler to serve <page>.html when <page> is requested.
 (defun no-extension-handler ()
+  "Serve <page>.html when <page> is requested."
   (handle-static-file
     ; FIXME: join pathnames portably
     (format nil "~a~a.html"

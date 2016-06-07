@@ -39,6 +39,7 @@
 ;;     qualified name is <prefix>:<local-name>.
 ;;   * Otherwise the qualified name is {<namespace-uri>}:<local-name>
 (defun qualified-tag-name (element)
+  "Compute the qualified tag name for ELEMENT."
   (if (dom:namespace-uri element)
     (let ((prefix-mapping (assoc (dom:namespace-uri element)
                                  *namespace-prefixes*
@@ -49,6 +50,7 @@
     (dom:tag-name element)))
 
 (defun tag-name= (name element)
+  "Return T if ELEMENT has the tag name NAME."
   (and (dom:element-p element) (string= name (qualified-tag-name element))))
 
 ;;
@@ -57,21 +59,13 @@
 ;; Because the DOM is missing some really obvious functions.
 ;;
 
-;; Returns the first child of an element with a given tag name
-(defun get-child-by-tag-name (element name)
-  (find name (dom:child-nodes element) :test #'tag-name=))
-
-;; Returns all children of an element with a given tag name
-(defun get-children-by-tag-name (element name)
-  (loop for x in (dom:child-nodes element)
-        when (tag-name= name x) collect x))
-
-;; Returns a list of attributes for an element.
 (defun get-attributes (element)
+  "Return the list of attributes for ELEMENT."
   (let ((attrs (dom:attributes element)))
     (loop for i upto (1- (dom:length attrs)) collect (dom:item attrs i))))
 
 (defun concatenate-text (element)
+  "Concatenate the text element children of ELEMENT."
   (labels ((char-whitespace-p (ch)
              (case ch
                ((#\space #\tab #\newline) t)
@@ -100,6 +94,7 @@
 ;;     recursive application of this function.
 ;;   * <text> is the result of concatenating all the text nodes in the element.
 (defun parse-metadata (element name-map)
+  "Parse metadata from ELEMENT according to the metadata spec NAME-MAP."
   (if (dom:element-p element)
     (let* ((name (qualified-tag-name element))
            (mapping (assoc name name-map :test #'string=)))
@@ -121,19 +116,22 @@
     nil))
 
 (defun parse-date-text (element)
+  "Parse the text of ELEMENT into a universal time string."
   (format nil "~a"
     (cl-date-time-parser:parse-date-time
       (concatenate-text element))))
 
 (defun parse-atom-link (element)
+  "Parse ELEMENT as an atom:link element, extracting the href attribute."
   (let ((href (find-if (lambda (x) (string= (dom:name x) "href"))
                        (get-attributes element))))
     (if href
       (dom:value href)
       "#")))
 
- ;; Creates a Feed object from the channel element of an RSS feed.
 (defun parse-rss-channel (channel)
+  "Parse CHANNEL as the channel element of an RSS feed, returning a list of
+   feed metadata."
   (loop for child across (dom:child-nodes channel)
         unless (or (not (dom:element-p child))
                    (tag-name= "item" child))
@@ -142,6 +140,7 @@
                     ("lastBuildDate" "updated"   ,#'parse-date-text)))))
 
 (defun parse-rss-item (item)
+  "Parse ITEM as an RSS item element, returning a list of item metadata."
   (loop for child across (dom:child-nodes item)
         when (dom:element-p child)
         collect (parse-metadata child
@@ -150,6 +149,8 @@
 
 ;; Parser for RSS feeds
 (defun *parse-rss (xml)
+  "Parse XML as the root element of an RSS feed, returning a list of feed
+   metadata and a list of item metadata lists."
   (let* ((rss (dom:document-element xml))
          (channel (find "channel" (dom:child-nodes rss) :test #'tag-name=)))
     (cond
@@ -164,6 +165,8 @@
                       collect (parse-rss-item child)))))))
 
 (defun parse-rss (source)
+  "Parse the stream SOURCE as an RSS feed, returning a list of feed metadata
+   and a list of item metadata lists."
   (*parse-rss (cxml:parse-stream source (cxml-dom:make-dom-builder))))
 
 ;; Atom Feeds
@@ -171,6 +174,7 @@
 ;; TODO: XHTML contents
 
 (defun parse-atom-feed (feed)
+  "Parse FEED as an atom:feed element, returning a list of feed metadata."
   (loop for child across (dom:child-nodes feed)
         unless (or (not (dom:element-p child))
                    (tag-name= "atom:entry" child))
@@ -180,6 +184,7 @@
                     ("atom:subtitle" "description")))))
 
 (defun parse-atom-entry (entry)
+  "Parse ENTRY as an atom:entry element, returning a list of item metadata."
   (loop for child across (dom:child-nodes entry)
         when (dom:element-p child)
         collect (parse-metadata child
@@ -193,6 +198,8 @@
 
 ;; Parser for Atom feeds
 (defun *parse-atom (xml)
+  "Parse XML as the root element of an Atom feed, returning a list of feed
+   metadata and a list of item metadata lists."
   (let* ((feed (dom:document-element xml)))
     (if (tag-name= "atom:feed" feed)
       (values (parse-atom-feed feed)
@@ -203,11 +210,12 @@
       nil)))
 
 (defun parse-atom (source)
+  "Parse the stream SOURCE as an Atom feed, returning a list of feed metadata
+   and a list of item metadata lists."
   (*parse-atom (cxml:parse-stream source (cxml-dom:make-dom-builder))))
 
-;; This "parser" will try to determine the type of feed and dispatch to the
-;; appropriate parser.  It only knows about RSS and Atom feeds.
 (defun parse-auto (source)
+  "Parse the stream SOURCE as either an Atom or RSS feed."
   ; determine type from XML root element, then dispatch to real parser
   (let* ((xml (cxml:parse-stream source (cxml-dom:make-dom-builder)))
          (root-tag (dom:tag-name (dom:document-element xml))))
@@ -225,13 +233,16 @@
         (cons "atom" #'parse-atom)))
 
 (defun get-parser (name)
+  "Return the parser with the name NAME."
   (let ((parser (assoc name *parsers* :test #'string=)))
     (if parser
       (cdr parser)
       nil)))
 
 (defun register-parser (name parser)
+  "Register PARSER as a parser with the name NAME."
   (acons name parser *parsers*))
 
 (defun parse (parser-name source)
+  "Parse the stream SOURCE with the parser named NAME."
   (funcall (get-parser parser-name) source))
