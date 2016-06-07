@@ -500,10 +500,10 @@
 (defmethod get-item ((guid string))
   "Get the item identified by GUID (without metadata)."
   (let ((item (select-dao 'item (:= 'guid guid))))
-    (cond
-      ((not item) nil)
-      ((> 1 (length item)) nil) ; TODO: guid not unique error
-      (t (first item)))))
+    (when (> (length item) 1)
+      (warn (format nil "Multiple items with GUID: ~a ( ~{~a ~})"
+                        guid (mapcar #'item-id item))))
+    (if item (first item) nil)))
 
 (defun query-items (&key (limit nil) (unread nil) (feed nil))
   "Query the items table.  If LIMIT is given, then at most LIMIT items will be
