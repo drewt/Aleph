@@ -20,15 +20,22 @@
 ;; This package defines the HTTP API for interacting with the aggregator.
 (in-package :http-server)
 
-(defparameter *port* (config:get-value '(:server :port)))
+(defparameter *port*          (config:get-value '(:server :port)))
 (defparameter *document-root* (config:get-value '(:server :document-root)))
-
-(when (eq :true (config:get-value '(:server :show-lisp-errors)))
-  (setf *show-lisp-errors-p* t))
 
 (defvar server (make-instance 'hunchentoot:easy-acceptor
                               :port *port*
                               :document-root *document-root*))
+
+(let ((show-errors (config:get-value '(:server :show-lisp-errors)))
+      (access-log  (config:get-value '(:server :access-log-file)))
+      (message-log (config:get-value '(:server :message-log-file))))
+  (when (eq :true show-errors)
+    (setf *show-lisp-errors-p* t))
+  (unless (eq :default access-log)
+    (setf (acceptor-access-log-destination server) access-log))
+  (unless (eq :default message-log)
+    (setf (acceptor-message-log-destination server) message-log)))
 
 ;; Hunchentoot apparently doesn't provide any way to check this, so we keep
 ;; track of it ourselves.

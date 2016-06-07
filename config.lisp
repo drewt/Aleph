@@ -29,7 +29,9 @@
     (:server
       (:port             . 8080)
       (:document-root    . "www/")
-      (:show-lisp-errors . :false))))
+      (:show-lisp-errors . :false)
+      (:access-log-file  . :default)
+      (:message-log-file . :default))))
 
 ;; Merge the given configuration alist with *config*.  Settings not specified
 ;; in the given alist remain unchanged in *config*.
