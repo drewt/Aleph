@@ -27,8 +27,9 @@
       (:pass . "aleph")
       (:host . "localhost"))
     (:server
-      (:port          . 8080)
-      (:document-root . "www/"))))
+      (:port             . 8080)
+      (:document-root    . "www/")
+      (:show-lisp-errors . :false))))
 
 ;; Merge the given configuration alist with *config*.  Settings not specified
 ;; in the given alist remain unchanged in *config*.

@@ -23,6 +23,9 @@
 (defparameter *port* (config:get-value '(:server :port)))
 (defparameter *document-root* (config:get-value '(:server :document-root)))
 
+(when (eq :true (config:get-value '(:server :show-lisp-errors)))
+  (setf *show-lisp-errors-p* t))
+
 (defvar server (make-instance 'hunchentoot:easy-acceptor
                               :port *port*
                               :document-root *document-root*))
