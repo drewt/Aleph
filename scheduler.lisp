@@ -43,26 +43,29 @@
       (schedule-update feed (funcall (second schedule)
                                      feed
                                      (feed-store:feed-schedule-parameter feed)))
-      (warn (format nil "Unknown schedule for feed ~a (~a): ~a"
-                        (feed-store:feed-id feed)
-                        (feed-store:feed-name feed)
-                        (feed-store:feed-schedule feed)))))
+      (warn "Unknown schedule for feed ~a (~a): ~a"
+            (feed-store:feed-id feed)
+            (feed-store:feed-name feed)
+            (feed-store:feed-schedule feed))))
   feed)
 
 (defun schedule-update (feed seconds)
   "Schedule an update for FEED after SECONDS seconds."
   (let* ((id (feed-store:feed-id feed))
-         (timer (sb-ext:make-timer (lambda ()
-                                     (feed-store:with-connection
-                                       (let ((feed (feed-store:get-feed id)))
-                                         (sb-thread:with-mutex (*scheduled-updates-lock*)
-                                           (remhash id *scheduled-updates*))
-                                         ; FIXME: if exception occurs during update, next
-                                         ;        update is never scheduled.
-                                         (controller:update-feed feed)
-                                         (schedule-feed feed))))
-                                   :thread t
-                                   :name (format nil "update-~a" id))))
+         (timer (sb-ext:make-timer
+                  (lambda ()
+                    (feed-store:with-connection
+                      (let ((feed (feed-store:get-feed id)))
+                        (sb-thread:with-mutex (*scheduled-updates-lock*)
+                          (remhash id *scheduled-updates*))
+                        ; A condition may be signalled during the fetch or parse;
+                        ; for now, just emit a warning and reschedule.
+                        (handler-case (controller:update-feed feed)
+                          ((not warning) (c)
+                            (warn "Condition signalled during update of ~a: ~a" id c)))
+                        (schedule-feed feed))))
+                  :thread t
+                  :name (format nil "update-~a" id))))
     (sb-thread:with-mutex (*scheduled-updates-lock*)
       (setf (gethash id *scheduled-updates*) timer))
     (sb-ext:schedule-timer timer seconds)))
@@ -150,7 +153,7 @@
         ((#\h) (setf time (+ time (* 60 60 n))))
         ((#\d) (setf time (+ time (* 24 60 60 n))))
         (otherwise
-          (warn (format nil "Unknown unit int time string: ~a" (string unit))))))))
+          (warn "Unknown unit int time string: ~a" (string unit)))))))
 
 (defun parse-minutes-or-time (param)
   "Parse PARAM, which should be either a time string or a positive integer,
