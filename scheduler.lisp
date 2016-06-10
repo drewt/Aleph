@@ -57,6 +57,8 @@
                                        (let ((feed (feed-store:get-feed id)))
                                          (sb-thread:with-mutex (*scheduled-updates-lock*)
                                            (remhash id *scheduled-updates*))
+                                         ; FIXME: if exception occurs during update, next
+                                         ;        update is never scheduled.
                                          (controller:update-feed feed)
                                          (schedule-feed feed))))
                                    :thread t

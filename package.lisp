@@ -91,6 +91,7 @@
            :get-feed
            :mark-item-read
            :mark-feed-read
+           :mark-all-read
            :add-items
            :add-item
            :get-items
@@ -119,7 +120,8 @@
 (defpackage :controller
   (:use :cl)
   (:export :add-feed
-           :update-feed))
+           :update-feed
+           :update-all))
 
 ;; Feed update scheduling
 (defpackage :scheduler

@@ -167,6 +167,19 @@
             nil))
         (not-found)))))
 
+(defun mark-all-read-handler ()
+  "Mark all items read."
+  (feed-store:with-connection
+    (method-case
+      ((:POST)
+        (feed-store:mark-all-read)
+        nil))))
+
+(defun update-all-handler ()
+  "Update all feeds."
+  (feed-store:with-connection
+    (controller:update-all)))
+
 (defun item-mark-read-handler ()
   "Mark the item read at /items/<id>."
   (feed-store:with-connection
@@ -213,8 +226,11 @@
             (create-regex-dispatcher "^/feeds/\\d+/update/?$"    #'feed-update-handler)
             (create-regex-dispatcher "^/feeds/\\d+/mark-read/?$" #'feed-mark-read-handler)
             (create-regex-dispatcher "^/feeds/\\d+/?$"           #'feed-handler)
+            (create-regex-dispatcher "^/feeds/mark-read/?$"      #'mark-all-read-handler)
+            (create-regex-dispatcher "^/feeds/update/?$"         #'update-all-handler)
             (create-regex-dispatcher "^/items/\\d+/mark-read/?$" #'item-mark-read-handler)
             (create-regex-dispatcher "^/items/\\d+/?$"           #'item-handler)
+            (create-regex-dispatcher "^/items/mark-read/?$"      #'mark-all-read-handler)
             'hunchentoot:dispatch-easy-handlers
             (create-regex-dispatcher "/$"                        #'index-handler)
             (create-regex-dispatcher "/[^\\./]*$"                #'no-extension-handler)))

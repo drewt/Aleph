@@ -551,3 +551,11 @@
   "Mark all items for the feed FEED as read."
   (mark-feed-read (feed-id feed)))
 
+; TODO: should take a timestamp arg, to prevent marking items that the client
+;       hasn't seen yet.
+(defun mark-all-read ()
+  "Mark all items as read."
+  (with-transaction ()
+    (execute (sql (:update 'item :set 'read t)))
+    (execute (sql (:update 'feed :set 'unread 0)))))
+
