@@ -520,6 +520,24 @@
     (setf query (list :order-by query (list :desc 'published)))
     (mapcar #'get-metadata (query-dao 'item (sql-compile query)))))
 
+(defun query-feeds (&key (limit nil) (unread nil) (since nil))
+  "Query the feeds table.  If LIMIT is given, then at most LIMIT feeds will be
+   returned.  If UNREAD is T, then only feeds with unread items will be
+   returned.  If SINCE is given, then only feeds with new items since the given
+   time (a universal time) will be returned."
+  (let ((query (list :select :* :from 'feed))
+        (constraints
+          (append (if unread '((:> unread 0)) '())
+                  (if since
+                    `((:> new-items ,(simple-date:universal-time-to-timestamp since)))
+                    '()))))
+    (when constraints
+      (setf query (append query `(:where (:and ,@constraints)))))
+    (when limit
+      (setf query (list :limit query limit)))
+    (setf query (list :order-by query 'name))
+    (mapcar #'get-metadata (query-dao 'feed (sql-compile query)))))
+
 (defgeneric mark-item-read (item)
   (:documentation "Mark an items as read."))
 

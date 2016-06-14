@@ -74,9 +74,14 @@
        (setf (return-code*) +HTTP-METHOD-NOT-ALLOWED+)
        nil)))
 
-(define-easy-handler (feeds :uri "/feeds") ()
+(define-easy-handler (feeds :uri "/feeds")
+                     ((since  :parameter-type 'integer))
   (feed-store:with-connection
-    (make-response (feed-store:get-feeds))))
+    (make-response
+      (feed-store:query-feeds
+        :since (if since
+                 (+ since 2208988800)
+                 nil)))))
 
 (define-easy-handler (items :uri "/items")
                      ((limit  :init-form 100

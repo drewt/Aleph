@@ -97,6 +97,7 @@
            :get-items
            :get-item
            :query-items
+           :query-feeds
            :update-feed-unread
            :count-feed-unread))
 
