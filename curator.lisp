@@ -41,6 +41,35 @@
                                      :junk-allowed t)
                       2208988800)))))
 
+(defun element->attributes-alist (element)
+  "Return the attributes of ELEMENT as an association list."
+  (mapcar (lambda (attr)
+            (cons (feed-store:attribute-name attr)
+                  (feed-store:attribute-value attr)))
+          (feed-store:element-attributes element)))
+
+(defun parse-media-data (data)
+  (loop for datum in data
+        when (let ((name (feed-store:element-name datum)))
+               (cond
+                 ((string= name "media:title")
+                   `("title"     . ,(feed-store:element-text datum)))
+                 ((string= name "media:content")
+                   `("content"    . ,(element->attributes-alist datum)))
+                 ((string= name "media:thumbnail")
+                   `("thumbnail" . ,(element->attributes-alist datum)))
+                 (t nil)))
+        collect it))
+
+(defun parse-media-content (element name)
+  "Parse a top-level media:content tag into a media metadata object."
+  `((,name ("content" . ,(element->attributes-alist element))
+           ,@(parse-media-data (feed-store:element-children element)))))
+
+(defun parse-media-group (element name)
+  "Parse a media:group tag into a media metadata object."
+  `((,name ,@(parse-media-data (feed-store:element-children element)))))
+
 (defun curate-datum (datum handlers)
   "Compute an association list of metadata from the element DATUM, using
    curator spec HANDLERS."
@@ -70,8 +99,8 @@
                                                  data))))))
 
 ;; Bring order to the chaos of feed/item metadata.  Returns a simple alist.
-;; TODO: "format" option to choose different curator behaviour.  E.g.,
-;;       "format=mrss" instructs the curator to include MRSS data.
+;; TODO: "ext" option to turn on curator extensions  E.g., "ext=mrss" instructs
+;;       the curator to include MRSS data.
 (defgeneric curate (object))
 
 (defmethod curate ((feed feed-store:feed))
@@ -112,7 +141,7 @@
         ("read"  . ,(feed-store:item-read item))
         ("tags"  . ,(feed-store:item-tags item)))
       (curate-metadata item
-        ;  Element Name  Default              Handler          Metadata Name
+        ;  Element Name  Default            Handler          Metadata Name
         `(("title"       "Untitled"         ,#'strip-html    "title")
           ("link"        ""                 ,#'keep-text     "link")
           ("dc:creator"  ""                 ,#'keep-text     "creator")
@@ -121,4 +150,7 @@
           ("content"     ,#'default-content ,#'strip-scripts "content")
           ("published"   ""                 ,#'parse-time    "published")
           ("updated"     ""                 ,#'parse-time    "updated")
+          ; Media RSS
+          ("media:content" nil ,#'parse-media-content "media")
+          ("media:group"   nil ,#'parse-media-group   "media")
           )))))
