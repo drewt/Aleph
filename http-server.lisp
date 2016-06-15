@@ -78,10 +78,16 @@
                      ((since  :parameter-type 'integer))
   (feed-store:with-connection
     (make-response
-      (feed-store:query-feeds
-        :since (if since
-                 (+ since 2208988800)
-                 nil)))))
+      (or (feed-store:query-feeds
+            :since (cond
+                     ((not since) nil)
+                     ; SINCE is a (negative) number of seconds in the past
+                     ((< since 0) (+ (get-universal-time) since))
+                     ; SINCE is a UNIX timestamp
+                     (t (+ since 2208988800))))
+          ; XXX: we pass an empty vector, since nil is encoded as the null
+          ;      JSON value.
+          #()))))
 
 (define-easy-handler (items :uri "/items")
                      ((limit  :init-form 100
