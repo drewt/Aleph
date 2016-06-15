@@ -98,6 +98,16 @@
                                                  (feed-store:object-metadata object)
                                                  data))))))
 
+(defun default-published (data curated-data)
+  (declare (ignore curated-data))
+  (let ((dc-date (find-element data "dc:date"))
+        (updated (find-element data "updated")))
+    (if (or dc-date updated)
+      (- (cl-date-time-parser:parse-date-time
+           (feed-store:element-text (or dc-date updated)))
+         2208988800)
+      0)))
+
 ;; Bring order to the chaos of feed/item metadata.  Returns a simple alist.
 ;; TODO: "ext" option to turn on curator extensions  E.g., "ext=mrss" instructs
 ;;       the curator to include MRSS data.
@@ -119,18 +129,20 @@
       `(("title"       ,(feed-store:feed-name feed) ,#'strip-html "title")
         ("link"        ""                           ,#'keep-text  "link")
         ("description" ""                           ,#'strip-html "description")
-        ("published"   nil                          ,#'parse-time "published")
-        ("updated"     nil                          ,#'parse-time "updated")
+        ("published"   ,#'default-published         ,#'parse-time "published")
+        ("updated"     0                            ,#'parse-time "updated")
         ))))
+
+(defun find-element (list name)
+  (find-if (lambda (x)
+             (string= (feed-store:element-name x) name))
+           list))
 
 (defmethod curate ((item feed-store:item))
   "Curate metadata for ITEM."
   (labels ((default-content (data curated-data)
              (declare (ignore curated-data))
-             (let ((desc (find-if (lambda (x)
-                                    (string= (feed-store:element-name x)
-                                             "description"))
-                                  data)))
+             (let ((desc (find-element data "description")))
                (if desc
                  (feed-store:element-text desc)
                  ""))))
@@ -141,15 +153,15 @@
         ("read"  . ,(feed-store:item-read item))
         ("tags"  . ,(feed-store:item-tags item)))
       (curate-metadata item
-        ;  Element Name  Default            Handler          Metadata Name
-        `(("title"       "Untitled"         ,#'strip-html    "title")
-          ("link"        ""                 ,#'keep-text     "link")
-          ("dc:creator"  ""                 ,#'keep-text     "creator")
-          ("description" ""                 ,#'strip-html    "description")
-          ("category"    ""                 ,#'keep-text     "category")
-          ("content"     ,#'default-content ,#'strip-scripts "content")
-          ("published"   ""                 ,#'parse-time    "published")
-          ("updated"     ""                 ,#'parse-time    "updated")
+        ;  Element Name  Default              Handler          Metadata Name
+        `(("title"       "Untitled"           ,#'strip-html    "title")
+          ("link"        ""                   ,#'keep-text     "link")
+          ("dc:creator"  ""                   ,#'keep-text     "creator")
+          ("description" ""                   ,#'strip-html    "description")
+          ("category"    ""                   ,#'keep-text     "category")
+          ("content"     ,#'default-content   ,#'strip-scripts "content")
+          ("published"   ,#'default-published ,#'parse-time    "published")
+          ("updated"     0                    ,#'parse-time    "updated")
           ; Media RSS
           ("media:content" nil ,#'parse-media-content "media")
           ("media:group"   nil ,#'parse-media-group   "media")
