@@ -25,9 +25,11 @@
 ;; Mapping between namespace URIs and prefixes for stored metadata.
 (defparameter *namespace-prefixes*
   '(("http://purl.org/dc/elements/1.1/"             . "dc")
+    ("http://purl.org/rss/1.0/"                     . "rss")
     ("http://purl.org/rss/1.0/modules/content/"     . "content")
     ("http://purl.org/rss/1.0/modules/syndication/" . "sy")
     ("http://search.yahoo.com/mrss/"                . "media")
+    ("http://www.w3.org/1999/02/22-rdf-syntax-ns#"  . "rdf")
     ("http://www.w3.org/2005/Atom"                  . "atom")))
 
 ;; Returns a qualified tag name for use within the aggregator.  The rules for
@@ -155,9 +157,13 @@
          (channel (find "channel" (dom:child-nodes rss) :test #'tag-name=)))
     (cond
       ((not (tag-name= "rss" rss))
-        nil) ; TODO: error
+        ; TODO: error
+        (warn "'~a' as root element when parsing RSS feed" (qualified-tag-name rss))
+        nil)
       ((not channel)
-        nil) ; TODO: error
+        ; TODO: error
+        (warn "Failed to find channel element for RSS feed")
+        nil)
       (t
         (values (parse-rss-channel channel)
                 (loop for child across (dom:child-nodes channel)
@@ -168,6 +174,57 @@
   "Parse the stream SOURCE as an RSS feed, returning a list of feed metadata
    and a list of item metadata lists."
   (*parse-rss (cxml:parse-stream source (cxml-dom:make-dom-builder))))
+
+;;
+;; RDF Site Summary, aka RSS 1.0.
+;;
+
+(defun parse-rdf-channel (channel)
+  "Parse CHANNEL as the channel element of an RSS 1.0 feed, returning a list of
+   feed metadata."
+  (loop for child across (dom:child-nodes channel)
+        unless (or (not (dom:element-p child))
+                   (tag-name= "rss:items" child))
+        collect (parse-metadata child
+                  `(("dc:date"         "updated"     ,#'parse-date-text)
+                    ("rss:title"       "title")
+                    ("rss:link"        "link")
+                    ("rss:description" "description")))))
+
+(defun parse-rdf-item (item)
+  "Parse ITEM as an RSS 1.0 item element, returning a list of item metadata."
+  (loop for child across (dom:child-nodes item)
+        when (dom:element-p child)
+        collect (parse-metadata child
+                  `(("dc:date"         "published" ,#'parse-date-text)
+                    ("rss:title"       "title")
+                    ("rss:link"        "link")
+                    ("rss:description" "description")))))
+
+(defun *parse-rdf (xml)
+  "Parse XML as the root element of an RSS 1.0 feed, returning a list of feed
+   metadata and a list of item metadata lists."
+  (let* ((rdf (dom:document-element xml))
+         (channel (find "rss:channel" (dom:child-nodes rdf) :test #'tag-name=)))
+    (cond
+      ((not (tag-name= "rdf:RDF" rdf))
+        ; TODO: error
+        (warn "'~a' as root element when parsing RSS 1.0 feed" (qualified-tag-name rdf))
+        nil)
+      ((not channel)
+        ; TODO: error
+        (warn "Failed to find channel element for RSS 1.0 feed")
+        nil)
+      (t
+        (values (parse-rdf-channel channel)
+                (loop for child across (dom:child-nodes rdf)
+                      when (tag-name= "rss:item" child)
+                      collect (parse-rdf-item child)))))))
+
+(defun parse-rdf (source)
+  "Parse the stream SOURCE as an RSS 1.0 feed, returning a list of feed
+   metadata and a list of item metadata lists."
+  (*parse-rdf (cxml:parse-stream source (cxml-dom:make-dom-builder))))
 
 ;; Atom Feeds
 ;;
@@ -206,8 +263,10 @@
               (loop for child across (dom:child-nodes feed)
                     when (tag-name= "atom:entry" child)
                     collect (parse-atom-entry child)))
-      ; TODO: error
-      nil)))
+      (progn
+        ; TODO: error
+        (warn "'~a' as root element when parsing Atom feed" (qualified-tag-name feed))
+        nil))))
 
 (defun parse-atom (source)
   "Parse the stream SOURCE as an Atom feed, returning a list of feed metadata
@@ -221,15 +280,18 @@
          (root-tag (dom:tag-name (dom:document-element xml))))
     (cond
       ((string= root-tag "rss") (*parse-rss xml))
+      ((string= root-tag "rdf:RDF") (*parse-rdf xml))
       ((string= root-tag "feed") (*parse-atom xml))
       ; TODO: error
-      (t nil))))
+      (t (warn "Failed to determine feed type for root element '~a'" root-tag)
+         nil))))
 
 ;; TODO: parsers for typical log files on UNIX systems.
 
 (defparameter *parsers*
   (list (cons "auto" #'parse-auto)
-        (cons "rss" #'parse-rss)
+        (cons "rss"  #'parse-rss)
+        (cons "rdf"  #'parse-rdf)
         (cons "atom" #'parse-atom)))
 
 (defun get-parser (name)
