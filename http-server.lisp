@@ -142,12 +142,13 @@
   (feed-store:with-connection
     (let* ((id (parse-integer (subseq (request-uri*) 7)
                               :junk-allowed t))
-           (fmt (get-parameter "format")))
+           (fmt (get-parameter "format"))
+           (unread (get-parameter "unread")))
       (if (feed-store:get-feed id)
-        (let ((items (feed-store:get-items id)))
+        (let ((items (feed-store:query-items :feed id :unread unread)))
           (method-case
             ((:GET)
-              (make-response (cond ((string= fmt "raw"))
+              (make-response (cond ((string= fmt "raw") items)
                                    (t (mapcar #'curator:curate items)))))
             ((:DELETE)
               ;TODO
