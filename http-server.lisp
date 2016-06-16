@@ -163,8 +163,7 @@
       (if (feed-store:get-feed id)
         (method-case
           ((:POST)
-            (controller:update-feed id)
-            nil))
+            (make-response (controller:update-feed id))))
         (not-found)))))
 
 (defun feed-mark-read-handler ()
