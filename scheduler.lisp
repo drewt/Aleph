@@ -63,6 +63,11 @@
                         (handler-case (controller:update-feed feed)
                           ((not warning) (c)
                             (warn "Condition signalled during update of ~a: ~a" id c)))
+                        ; If update feed signalled a condition before setting this,
+                        ; schedule-feed could schedule an update immediately; so we
+                        ; set it again.
+                        (setf (feed-store:feed-updated feed)
+                              (simple-date:universal-time-to-timestamp (get-universal-time)))
                         (schedule-feed feed))))
                   :thread t
                   :name (format nil "update-~a" id))))
