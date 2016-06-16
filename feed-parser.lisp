@@ -303,7 +303,7 @@
 
 (defun register-parser (name parser)
   "Register PARSER as a parser with the name NAME."
-  (acons name parser *parsers*))
+  (setf *parsers* (acons name parser *parsers*)))
 
 (defun parse (parser-name source)
   "Parse the stream SOURCE with the parser named NAME."

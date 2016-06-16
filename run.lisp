@@ -52,6 +52,10 @@
 (load "scheduler.lisp")
 (load "http-server.lisp")
 
+; Load plugins
+(loop for f in (directory "plugins/*.lisp") do
+  (load f))
+
 (feed-store:initialize)
 (scheduler:schedule-all)
 (http-server:start)

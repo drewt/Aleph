@@ -53,7 +53,7 @@
 
 (defun register-fetcher (name fetcher)
   "Register FETCHER as a fetcher with the name NAME."
-  (acons name fetcher *fetchers*))
+  (setf *fetchers* (acons name fetcher *fetchers*)))
 
 (defun fetch (fetcher-name source)
   "Return a stream for SOURCE using the fetcher named by FETCHER-NAME."
