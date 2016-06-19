@@ -98,6 +98,11 @@
                                                  (feed-store:object-metadata object)
                                                  data))))))
 
+(defun find-element (list name)
+  (find-if (lambda (x)
+             (string= (feed-store:element-name x) name))
+           list))
+
 (defun default-published (data curated-data)
   (declare (ignore curated-data))
   (let ((dc-date (find-element data "dc:date"))
@@ -127,16 +132,11 @@
     (curate-metadata feed
       ;  Element Name  Default                      Handler       Metadata Name
       `(("title"       ,(feed-store:feed-name feed) ,#'strip-html "title")
-        ("link"        ""                           ,#'keep-text  "link")
+        ("link"        nil                          ,#'keep-text  "link")
         ("description" ""                           ,#'strip-html "description")
         ("published"   ,#'default-published         ,#'parse-time "published")
         ("updated"     0                            ,#'parse-time "updated")
         ))))
-
-(defun find-element (list name)
-  (find-if (lambda (x)
-             (string= (feed-store:element-name x) name))
-           list))
 
 (defmethod curate ((item feed-store:item))
   "Curate metadata for ITEM."
@@ -155,10 +155,10 @@
       (curate-metadata item
         ;  Element Name  Default              Handler          Metadata Name
         `(("title"       "Untitled"           ,#'strip-html    "title")
-          ("link"        ""                   ,#'keep-text     "link")
-          ("dc:creator"  ""                   ,#'keep-text     "creator")
+          ("link"        nil                  ,#'keep-text     "link")
+          ("dc:creator"  nil                  ,#'keep-text     "creator")
           ("description" ""                   ,#'strip-html    "description")
-          ("category"    ""                   ,#'keep-text     "category")
+          ("category"    nil                  ,#'keep-text     "category")
           ("content"     ,#'default-content   ,#'strip-scripts "content")
           ("published"   ,#'default-published ,#'parse-time    "published")
           ("updated"     0                    ,#'parse-time    "updated")
