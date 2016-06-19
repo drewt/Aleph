@@ -1,7 +1,10 @@
 <div id="items">
   <div class="item" ng-repeat="item in ::$ctrl.items">
     <h2 class="item-title"><a ng-href="{{::item.link}}">{{::item.title}}</a></h2>
-    <div class="item-published">{{::item.published}}</div>
+    <div class="item-published">
+      <span ng-if="::item.creator">By <span class="item-author">{{::item.creator}}</span> - </span>
+      {{::item.published}}
+    </div>
     <div ng-if="::item.media.thumbnail.url">
       <img ng-src="{{::item.media.thumbnail.url}}">
     </div>

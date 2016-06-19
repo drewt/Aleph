@@ -139,6 +139,14 @@ div#items {
 	margin: 10px 0;
 }
 
-div.item-content {
+.item-content {
 	margin-bottom: 15px;
+}
+
+.item-published {
+	font-size: 12px;
+}
+
+.item-author {
+	font-weight: bold;
 }
