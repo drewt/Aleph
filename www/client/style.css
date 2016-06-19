@@ -67,7 +67,12 @@ ul.menu li a {
 }
 
 .tool-bar a {
-	padding: 0 10px;
+	padding: 10px 10px;
+	transition: background-color .25s;
+}
+
+.tool-bar a:hover {
+	background-color: rgba(0, 0, 0, .15);
 }
 
 .tool-bar a:visited {
