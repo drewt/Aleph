@@ -1,0 +1,35 @@
+<form id="submit-form" ng-submit="$ctrl.submitFeed()">
+  <fieldset>
+    <table class="add-feed">
+      <tr>
+        <td><input type="text" ng-model="$ctrl.name" name="name" placeholder="Name"></td>
+      </tr>
+      <tr>
+        <td><input type="text" ng-model="$ctrl.source" name="source" placeholder="Source"></td>
+      </tr>
+      <tr>
+        <td>
+          <select name="fetcher" ng-model="$ctrl.fetcher">
+            <option value="http">HTTP</option>
+            <option value="file">File</option>
+            <option value="command">Command</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <select name="parser" ng-model="$ctrl.parser">
+            <option value="auto">RSS/Atom</option>
+            <option value="chan">Chan</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td><input type="number" ng-model="$ctrl.interval" name="interval" placeholder="Inverval" min="1" value="30"></td>
+      </tr>
+      <tr>
+        <td><input type="submit" value="Add Feed"></td>
+      </tr>
+    </table>
+  </fieldset>
+</form>

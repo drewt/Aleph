@@ -1,0 +1,139 @@
+/*
+ * General Styling
+ */
+
+body {
+	background-color: white;
+	font-family: arial, sans-serif;
+	font-size: 14px;
+	margin: 0px;
+	padding: 0px;
+}
+
+h2 {
+	font-family: 'Times New Roman', serif;
+}
+
+a {
+	text-decoration: none;
+}
+
+form, fieldset {
+	border: none;
+}
+
+/*
+ * Context Menus
+ */
+
+ul.menu {
+	position: absolute;
+	list-style-type: none;
+	background-color: white;
+	box-shadow: 0 0 5px rgba(0, 0, 0, .15);
+	border: 1px solid rgba(0, 0, 0, .15);
+	top: 0;
+	left: 0;
+	margin: 0;
+	padding: 0;
+}
+
+ul.menu li {
+	border-bottom: 1px solid rgba(0, 0, 0, .05);
+	margin: 5px;
+	padding: 5px;
+	cursor: pointer;
+	position: relative;
+	transition: background-color .25s;
+	overflow: hidden;
+	font-size: 12px;
+}
+
+ul.menu li:hover {
+	background-color: rgba(0, 0, 0, .15);
+}
+
+ul.menu li a {
+	color: black;
+}
+
+/*
+ * Tool Bar
+ */
+
+.tool-bar {
+	background-color: #F2F2F2;
+	padding: 10px;
+}
+
+.tool-bar a {
+	padding: 0 10px;
+}
+
+.tool-bar a:visited {
+	color: blue;
+}
+
+/*
+ * Feed List
+ */
+
+div#feeds {
+	width: 20%;
+	float: left;
+}
+
+table.feed-table {
+	table-layout: fixed;
+	width: 100%;
+	border-collapse: collapse;
+}
+
+td.feed-name {
+	padding-left: 10px;
+}
+
+td.feed-unread {
+	text-align: right;
+	width: 30px;
+}
+
+td.feed-mark-read {
+	text-align: right;
+	width: 15px;
+}
+
+td.feed-update {
+	text-align: right;
+	width: 15px;
+}
+
+table.feed-table td {
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+table.feed-table tr:nth-child(even) {
+	background-color: #F2F2F2;
+}
+
+.feed-table a:visited {
+	color: blue;
+}
+
+/*
+ * Item List
+ */
+
+div#items {
+	margin-left: 20%;
+	padding: 0 10px;
+}
+
+.item-published {
+	margin: 10px 0;
+}
+
+div.item-content {
+	margin-bottom: 15px;
+}

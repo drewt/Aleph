@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" ng-app="alephApp">
+  <head>
+    <meta charset="utf-8">
+    <title>Feeds - λleph</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="app/angular.js"></script>
+    <script src="app/angular-route.js"></script>
+    <script src="app/angular-sanitize.js"></script>
+    <script src="app/ng-contextmenu.js"></script>
+    <script src="app/app.module.js"></script>
+    <script src="app/app.config.js"></script>
+    <script src="app/tool-bar/tool-bar.module.js"></script>
+    <script src="app/tool-bar/tool-bar.component.js"></script>
+    <script src="app/feed-list/feed-list.module.js"></script>
+    <script src="app/feed-list/feed-list.component.js"></script>
+    <script src="app/item-list/item-list.module.js"></script>
+    <script src="app/item-list/item-list.component.js"></script>
+    <script src="app/add-feed/add-feed.module.js"></script>
+    <script src="app/add-feed/add-feed.component.js"></script>
+  </head>
+  <body>
+    <div id="page">
+      <tool-bar></tool-bar>
+      <feed-list></feed-list>
+      <div ng-view></div>
+    </div>
+  </body>
+</html>

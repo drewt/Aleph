@@ -1,0 +1,26 @@
+<div id="feeds">
+  <table class="feed-table">
+    <tbody>
+      <tr>
+        <td class="feed-name"><a class="feed-link" href="#!/feeds">All</a></td>
+        <td class="feed-unread">
+          <a href="#!/feeds/unread">{{$ctrl.unread > 0 ? $ctrl.unread : ''}}</a>
+        </td>
+        <td class="feed-update"></td>
+        <td class="feed-mark-read"></td>
+      </tr>
+      <tr ng-repeat="feed in $ctrl.feeds" data-context-menu="app/feed-list/feed-list.menu.html" ng-model="feed">
+        <td class="feed-name"><a class="feed-link" ng-href="#!/feeds/{{feed.id}}">{{feed.name}}</a></td>
+        <td class="feed-unread">
+          <a ng-href="#!/feeds/{{feed.id}}/unread">{{feed.unread ? feed.unread : ''}}</a>
+        </td>
+        <td class="feed-update">
+          <a ng-click="$ctrl.update(feed.id)" href="javascript:void(0)">&#8635</a>
+        </td>
+        <td class="feed-mark-read">
+          <a ng-click="$ctrl.markRead(feed.id)" href="javascript:void(0)">&#10003</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
